@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAG Lab — Interactive Simulator</title>
+<style>
+  :root{
+    --bg:#08090d; --panel:#10121a; --panel2:#151824; --line:#292d3a;
+    --text:#f5f7fb; --muted:#9aa3b2; --accent:#8b7cff; --accent2:#5eead4;
+    --good:#7ee787; --warn:#fbbf24; --bad:#fb7185; --shadow:0 20px 70px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:
+    radial-gradient(circle at 15% 0%,rgba(139,124,255,.16),transparent 30%),
+    radial-gradient(circle at 90% 10%,rgba(94,234,212,.10),transparent 25%),var(--bg);
+    color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+  button,input,textarea{font:inherit}
+  button{cursor:pointer}
+  .app{max-width:1500px;margin:auto;padding:28px}
+  header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:24px}
+  .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent2);font-weight:800}
+  h1{font-size:clamp(38px,6vw,76px);line-height:.92;letter-spacing:-.06em;margin:10px 0 14px}
+  .gradient{background:linear-gradient(100deg,#fff 15%,#a99fff 55%,#5eead4);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{max-width:760px;color:var(--muted);font-size:16px;line-height:1.65;margin:0}
+  .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px}
+  .btn:hover{border-color:#555c70;transform:translateY(-1px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:800}
+  .btn.ghost{background:transparent}
+  .layout{display:grid;grid-template-columns:270px 1fr;gap:18px}
+  .sidebar,.card{background:rgba(16,18,26,.88);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:20px}
+  .sidebar{padding:14px;height:max-content;position:sticky;top:18px}
+  .step{display:flex;gap:12px;align-items:center;padding:12px;border-radius:13px;color:var(--muted);border:1px solid transparent;margin-bottom:4px}
+  .step:hover{background:#171a24;color:var(--text)}
+  .step.active{background:rgba(139,124,255,.12);border-color:rgba(139,124,255,.35);color:var(--text)}
+  .num{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#1b1e29;font-size:12px;font-weight:900}
+  .active .num{background:var(--accent);color:white}
+  .step small{display:block;color:inherit;font-size:11px;margin-top:2px}
+  .main{min-width:0}
+  .progress{height:7px;background:#191c25;border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .progress i{display:block;height:100%;width:10%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:.35s}
+  .card{padding:24px;margin-bottom:18px}
+  .card-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}
+  .step-title{font-size:26px;letter-spacing:-.03em;margin:4px 0}
+  .step-desc{color:var(--muted);line-height:1.55;margin:0}
+  .badge{font-size:11px;border:1px solid var(--line);background:#171a24;border-radius:99px;padding:6px 9px;color:var(--muted);white-space:nowrap}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .field{display:flex;flex-direction:column;gap:8px}
+  label{font-size:12px;color:#c9cfda;font-weight:800}
+  textarea,input{width:100%;border:1px solid var(--line);background:#0b0d12;color:var(--text);border-radius:13px;padding:13px;outline:none}
+  textarea{min-height:190px;resize:vertical;line-height:1.55}
+  input:focus,textarea:focus{border-color:var(--accent)}
+  .mini{background:#0c0f15;border:1px solid var(--line);border-radius:14px;padding:15px}
+  .mini h4{margin:0 0 8px;font-size:13px}
+  .mini p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+  .chunks{display:grid;gap:9px;max-height:400px;overflow:auto}
+  .chunk{background:#0b0e14;border:1px solid var(--line);border-radius:12px;padding:12px}
+  .chunk .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-bottom:7px}
+  .chunk p{margin:0;font-size:12px;line-height:1.55}
+  .rank{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--line);background:#0b0e14;border-radius:13px;margin-bottom:8px}
+  .score{font-weight:900;color:var(--accent2)}
+  .rank p{margin:0;color:#d7dce5;font-size:12px;line-height:1.45}
+  .bar{height:5px;background:#20232e;border-radius:99px;overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;background:var(--accent);width:0}
+  .prompt{background:#080a0f;border:1px solid #333847;border-radius:14px;padding:15px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#d9deea;max-height:330px;overflow:auto}
+  .answer{font-size:15px;line-height:1.7;color:#eef1f7}
+  .answer strong{color:#fff}
+  .citation{display:inline-flex;align-items:center;gap:4px;background:rgba(94,234,212,.1);border:1px solid rgba(94,234,212,.25);color:#8df4e2;border-radius:6px;padding:1px 5px;font-size:11px}
+  .callout{padding:14px 16px;border-left:3px solid var(--accent);background:rgba(139,124,255,.07);border-radius:0 12px 12px 0;color:#cbd1dc;font-size:13px;line-height:1.55}
+  .controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+  .explain{display:none}
+  .explain.show{display:block;margin-top:16px}
+  .explain h4{margin:0 0 7px}.explain p{color:var(--muted);line-height:1.6;font-size:13px}
+  .quiz{display:grid;gap:8px}.option{text-align:left;padding:12px;border:1px solid var(--line);background:#0b0e14;color:var(--text);border-radius:11px}.option.correct{border-color:var(--good);background:rgba(126,231,135,.08)}.option.wrong{border-color:var(--bad);background:rgba(251,113,133,.08)}
+  .toast{position:fixed;right:20px;bottom:20px;background:#181b25;border:1px solid #3a3f4e;border-radius:13px;padding:12px 15px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s;font-size:13px}.toast.show{opacity:1;transform:none}
+  .metric b{display:block;font-size:28px;letter-spacing:-.04em}.metric span{font-size:11px;color:var(--muted)}
+  footer{color:#6f7786;font-size:11px;text-align:center;padding:10px}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;display:flex;overflow:auto}.step{min-width:150px}.grid,.grid3{grid-template-columns:1fr}header{flex-direction:column}.app{padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="eyebrow">RAG LAB / no backend / learn by doing</div>
+      <h1>From <span class="gradient">question → grounded answer.</span></h1>
+      <p class="sub">A self-contained simulator of Retrieval-Augmented Generation. Walk through ingestion, chunking, embeddings, vector search, reranking, prompt construction, generation, citations and evaluation — with your own mini knowledge base.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn ghost" id="resetBtn">↺ Reset</button>
+      <button class="btn primary" id="runBtn">▶ Run full RAG</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="steps"></aside>
+    <main class="main">
+      <div class="progress"><i id="progress"></i></div>
+      <section class="card" id="stageCard"></section>
+      <section class="card" id="labCard"></section>
+      <footer>Everything runs locally in this HTML file. The “embeddings”, retrieval and answer are intentionally simulated so you can see the mechanics without an API key.</footer>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const defaultDocs = [
+  {id:"DOC-01", title:"RAG basics", text:"Retrieval-Augmented Generation combines retrieval with generation. Instead of asking a language model to answer only from its learned parameters, a RAG system retrieves relevant external context and places it into the generation prompt. This can make answers more grounded, current, and traceable."},
+  {id:"DOC-02", title:"Chunking", text:"Chunking breaks documents into smaller pieces before indexing. Good chunks preserve enough meaning to answer questions while staying small enough for precise retrieval. Chunk size and overlap are design choices, not universal constants."},
+  {id:"DOC-03", title:"Embeddings", text:"An embedding converts text into a numerical vector representing semantic meaning. Similar concepts should occupy nearby regions in vector space. A vector database can store these vectors and search for chunks close to a query vector."},
+  {id:"DOC-04", title:"Retrieval", text:"At query time, the question is embedded and compared with stored chunk vectors. The retriever returns the top-k candidates. Retrieval quality depends on chunking, embeddings, indexing and the search strategy."},
+  {id:"DOC-05", title:"Reranking", text:"Reranking takes retrieved candidates and applies a stronger relevance model or business rules to order them. This can improve precision before context is passed to the generator, especially when the initial top-k contains near-matches."},
+  {id:"DOC-06", title:"Grounded generation", text:"The generator receives the user question plus selected context. A strong prompt tells it to answer using the provided sources, avoid unsupported claims, and cite the relevant chunks. The model generates a natural-language answer from that grounded context."},
+  {id:"DOC-07", title:"Evaluation", text:"RAG evaluation can measure retrieval and generation separately. Retrieval metrics include recall@k and precision@k. Generation metrics can include correctness, faithfulness, relevance and citation quality. A useful RAG system optimizes the whole pipeline, not just the final model."}
+];
+
+const stages = [
+  ["01","Ingest","Load source knowledge"],
+  ["02","Parse","Extract usable text"],
+  ["03","Chunk","Split into retrieval units"],
+  ["04","Embed","Map text → vectors"],
+  ["05","Store","Index vectors + metadata"],
+  ["06","Retrieve","Find likely evidence"],
+  ["07","Rerank","Order evidence by relevance"],
+  ["08","Prompt","Build grounded context"],
+  ["09","Generate","Produce an answer"],
+  ["10","Evaluate","Check quality"]
+];
+
+let state = {
+  stage:0, docs:JSON.parse(JSON.stringify(defaultDocs)), chunks:[], vectors:[],
+  retrieved:[], reranked:[], answer:"", query:"What is chunking and why does it matter in RAG?",
+  evaluated:false
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+
+function tokenize(t){return t.toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(x=>x.length>2)}
+function termSet(t){return new Set(tokenize(t))}
+function similarity(a,b){
+  const A=termSet(a),B=termSet(b); let inter=0;
+  A.forEach(x=>{if(B.has(x))inter++});
+  return inter / Math.max(1, Math.sqrt(A.size*B.size));
+}
+function makeChunks(){
+  const out=[];
+  state.docs.forEach(doc=>{
+    const sentences=doc.text.match(/[^.!?]+[.!?]+/g)||[doc.text];
+    let buf="", n=0;
+    sentences.forEach(s=>{
+      if((buf+" "+s).trim().length>180 && buf){
+        out.push({id:`${doc.id}-C${++n}`,doc:doc.id,title:doc.title,text:buf.trim()});
+        const words=buf.trim().split(/\s+/); buf=words.slice(Math.max(0,words.length-10)).join(" ");
+      }
+      buf += " "+s.trim();
+    });
+    if(buf.trim()) out.push({id:`${doc.id}-C${++n}`,doc:doc.id,title:doc.title,text:buf.trim()});
+  });
+  return out;
+}
+function fakeVector(text){
+  const words=tokenize(text), dims=8, v=Array(dims).fill(0);
+  words.forEach(w=>{let h=0;for(let i=0;i<w.length;i++)h=(h*31+w.charCodeAt(i))>>>0;v[h%dims]+=1});
+  const norm=Math.sqrt(v.reduce((a,x)=>a+x*x,0))||1; return v.map(x=>(x/norm).toFixed(3));
+}
+function renderSidebar(){
+  $("#steps").innerHTML=stages.map((s,i)=>`
+    <button class="step ${i===state.stage?"active":""}" onclick="go(${i})">
+      <span class="num">${s[0]}</span><span><b>${s[1]}</b><small>${s[2]}</small></span>
+    </button>`).join("");
+}
+function render(){
+  renderSidebar();
+  $("#progress").style.width=((state.stage+1)/stages.length*100)+"%";
+  const [num,name,desc]=stages[state.stage];
+  $("#stageCard").innerHTML=`
+    <div class="card-head"><div><div class="eyebrow">STEP ${num}</div><h2 class="step-title">${name}</h2><p class="step-desc">${desc}</p></div><span class="badge">${state.stage+1} / ${stages.length}</span></div>`;
+  renderLab();
+}
+function renderLab(){
+  const c=$("#labCard");
+  if(state.stage===0) c.innerHTML=ingest();
+  if(state.stage===1) c.innerHTML=parse();
+  if(state.stage===2) c.innerHTML=chunk();
+  if(state.stage===3) c.innerHTML=embed();
+  if(state.stage===4) c.innerHTML=store();
+  if(state.stage===5) c.innerHTML=retrieve();
+  if(state.stage===6) c.innerHTML=rerank();
+  if(state.stage===7) c.innerHTML=promptStage();
+  if(state.stage===8) c.innerHTML=generate();
+  if(state.stage===9) c.innerHTML=evaluate();
+}
+function next(){if(state.stage<9){state.stage++;render()}else evaluateAction()}
+function go(i){state.stage=i;render()}
+function ingest(){
+ return `<div class="grid"><div class="field"><label>Knowledge base</label><textarea id="docsInput">${state.docs.map(d=>`[${d.id}] ${d.title}\n${d.text}`).join("\n\n")}</textarea></div>
+ <div><div class="mini"><h4>What happens here?</h4><p>Real systems ingest PDFs, web pages, databases, tickets, Notion pages, etc. The goal is to turn messy source material into a reliable corpus.</p></div><div class="mini" style="margin-top:10px"><h4>Current corpus</h4><div class="grid3"><div class="metric"><b>${state.docs.length}</b><span>documents</span></div><div class="metric"><b>local</b><span>no API calls</span></div><div class="metric"><b>1</b><span>mini knowledge base</span></div></div></div></div></div>
+ <div class="callout" style="margin-top:14px">💡 <b>Mental model:</b> RAG is usually a two-part system: an <b>offline indexing pipeline</b> and an <b>online query pipeline</b>. Ingestion → storage mostly happens before a user asks a question.</div>
+ <div class="controls"><button class="btn primary" onclick="saveDocs();next()">Save & continue →</button></div>`;
+}
+function saveDocs(){
+ const raw=$("#docsInput").value.trim(); const blocks=raw.split(/\n\s*\n/);
+ state.docs=blocks.map((b,i)=>{const lines=b.split("\n");const first=lines.shift()||"";let m=first.match(/^\[(.*?)\]\s*(.*)$/);return {id:m?m[1]:`DOC-${String(i+1).padStart(2,"0")}`,title:m?m[2]:"Document "+(i+1),text:lines.join(" ").trim()||first}}).filter(x=>x.text);
+}
+function parse(){
+ return `<div class="grid3">${[
+ ["Unstructured text","PDFs, HTML, docs and messages become plain text."],
+ ["Metadata","Keep source, title, URL, timestamps, permissions and IDs."],
+ ["Cleaning","Remove navigation noise, duplicated headers, broken text and irrelevant boilerplate."]
+ ].map(x=>`<div class="mini"><h4>${x[0]}</h4><p>${x[1]}</p></div>`).join("")}</div>
+ <div style="margin-top:14px" class="chunks">${state.docs.map(d=>`<div class="chunk"><div class="meta"><span>${esc(d.id)} · ${esc(d.title)}</span><span>${d.text.length} chars</span></div><p>${esc(d.text)}</p></div>`).join("")}</div>
+ <div class="controls"><button class="btn primary" onclick="next()">Text looks usable →</button></div>`;
+}
+function chunk(){
+ state.chunks=makeChunks();
+ return `<div class="grid"><div class="mini"><h4>Chunking strategy used by this simulator</h4><p>Sentence-aware chunks with a soft ~180 character target and a small overlap. In production, you may use token-aware chunking, headings, semantic boundaries or document-specific strategies.</p></div>
+ <div class="mini"><h4>Result</h4><div class="grid3"><div class="metric"><b>${state.docs.length}</b><span>documents</span></div><div class="metric"><b>${state.chunks.length}</b><span>chunks</span></div><div class="metric"><b>~180</b><span>target chars</span></div></div></div></div>
+ <div class="chunks" style="margin-top:14px">${state.chunks.map((x,i)=>`<div class="chunk"><div class="meta"><span>${x.id} · ${x.title}</span><span>#${i+1}</span></div><p>${esc(x.text)}</p></div>`).join("")}</div>
+ <div class="controls"><button class="btn primary" onclick="next()">Create chunks →</button></div>`;
+}
+function embed(){
+ state.vectors=state.chunks.map(c=>({id:c.id,v:fakeVector(c.text)}));
+ return `<div class="callout"><b>Embedding intuition:</b> text is converted into coordinates. This demo uses a tiny deterministic hash-based vector — <b>not a real semantic embedding model</b> — purely so the mechanics are visible offline.</div>
+ <div class="chunks" style="margin-top:14px">${state.vectors.map((x,i)=>`<div class="chunk"><div class="meta"><span>${x.id}</span><span>8 dimensions</span></div><p style="font-family:monospace">[ ${x.v.join(", ")} ]</p><div class="bar"><i style="width:${Math.min(100,25+i*7)}%"></i></div></div>`).join("")}</div>
+ <div class="controls"><button class="btn primary" onclick="next()">Generate vectors →</button></div>`;
+}
+function store(){
+ return `<div class="grid3">${[
+ ["Vector","${state.vectors.length} vectors","Semantic representation used for nearest-neighbor search."],
+ ["Metadata","${state.chunks.length} records","Chunk ID, document ID and title let us trace evidence."],
+ ["Index","Local array","Real systems often use pgvector, Pinecone, Weaviate, Qdrant, Elasticsearch, etc."]
+ ].map(x=>`<div class="mini"><div class="eyebrow">${x[0]}</div><h4>${x[1]}</h4><p>${x[2]}</p></div>`).join("")}</div>
+ <div class="callout" style="margin-top:14px">⚠️ <b>Important:</b> a vector database is not the “knowledge” itself. It is an index over representations of chunks plus metadata. You still need the original chunk text to build useful context.</div>
+ <div class="controls"><button class="btn primary" onclick="next()">Index ready →</button></div>`;
+}
+function retrieve(){
+ const q=state.query;
+ const scored=state.chunks.map(c=>({...c,score:similarity(q,c.text)})).sort((a,b)=>b.score-a.score);
+ state.retrieved=scored.slice(0,5);
+ return `<div class="field"><label>User question</label><input id="queryInput" value="${esc(q)}" oninput="state.query=this.value"/></div>
+ <div style="margin-top:14px">${state.retrieved.map((x,i)=>rankHTML(x,i)).join("")}</div>
+ <div class="callout" style="margin-top:14px"><b>Top-k retrieval:</b> the retriever is not answering the question. It is selecting candidate evidence. Retrieval errors here become context errors later.</div>
+ <div class="controls"><button class="btn primary" onclick="runRetrieve();next()">Retrieve top-k →</button></div>`;
+}
+function runRetrieve(){state.query=$("#queryInput").value.trim()||state.query;state.retrieved=state.chunks.map(c=>({...c,score:similarity(state.query,c.text)})).sort((a,b)=>b.score-a.score).slice(0,5)}
+function rankHTML(x,i){return `<div class="rank"><div class="num">${i+1}</div><div><b>${esc(x.title)}</b><p>${esc(x.text)}</p><div class="bar"><i style="width:${Math.min(100,Math.round(x.score*180))}%"></i></div></div><div class="score">${x.score.toFixed(3)}</div></div>`}
+function rerank(){
+ const base=state.retrieved.length?state.retrieved:state.chunks.map(c=>({...c,score:similarity(state.query,c.text)})).sort((a,b)=>b.score-a.score).slice(0,5);
+ state.reranked=base.map(x=>({...x,rerank: x.score + (x.text.toLowerCase().includes("chunk") && state.query.toLowerCase().includes("chunk")?.12:0)})).sort((a,b)=>b.rerank-a.rerank);
+ return `<div class="callout"><b>Why rerank?</b> Vector search is fast and broad. A second-stage ranker can look more carefully at query–document relevance, metadata, freshness, authority or business rules.</div>
+ <div style="margin-top:14px">${state.reranked.map((x,i)=>rankHTML({...x,score:x.rerank},i)).join("")}</div>
+ <div class="controls"><button class="btn primary" onclick="next()">Keep best evidence →</button></div>`;
+}
+function promptStage(){
+ const selected=(state.reranked.length?state.reranked:state.retrieved).slice(0,3);
+ const context=selected.map((x,i)=>`[${x.id}] ${x.text}`).join("\n");
+ const p=`SYSTEM:\nAnswer using only the supplied context. If context is insufficient, say so. Cite sources.\n\nCONTEXT:\n${context}\n\nUSER:\n${state.query}\n\nASSISTANT:`;
+ return `<div class="field"><label>Prompt assembled for the generator</label><div class="prompt">${esc(p)}</div></div>
+ <div class="grid" style="margin-top:14px"><div class="mini"><h4>Question</h4><p>${esc(state.query)}</p></div><div class="mini"><h4>Grounding</h4><p>${selected.length} chunks selected · citations preserved · unsupported claims discouraged</p></div></div>
+ <div class="controls"><button class="btn primary" onclick="next()">Send grounded prompt →</button></div>`;
+}
+function generate(){
+ const selected=(state.reranked.length?state.reranked:state.retrieved).slice(0,3);
+ let relevant=selected.filter(x=>similarity(state.query,x.text)>0.05);
+ let answer;
+ if(state.query.toLowerCase().includes("chunk")){
+   answer=`<strong>Chunking</strong> is the step where source documents are split into smaller retrieval units. In RAG, this matters because retrieval works on these units: chunks that are too large can contain lots of irrelevant text, while chunks that are too small can lose the context needed to answer a question. A practical strategy is to preserve meaningful boundaries such as sections or sentences and tune size/overlap for the content. <span class="citation">[DOC-02]</span>`;
+ } else if(relevant.length){
+   answer=`Based on the retrieved context, the strongest evidence says: <strong>${esc(relevant[0].text)}</strong> <span class="citation">[${relevant[0].id}]</span>`;
+ } else answer=`I don't have enough relevant evidence in the retrieved context to answer that confidently.`;
+ state.answer=answer;
+ return `<div class="answer">${answer}</div>
+ <div class="callout" style="margin-top:16px"><b>Notice what “grounded” means:</b> the answer is constrained by retrieved evidence and can point back to the chunks used. RAG does not automatically make a model truthful — bad retrieval can still produce bad answers.</div>
+ <div class="controls"><button class="btn primary" onclick="next()">Evaluate this run →</button></div>`;
+}
+function evaluate(){
+ const selected=(state.reranked.length?state.reranked:state.retrieved).slice(0,3);
+ const coverage=selected.some(x=>similarity(state.query,x.text)>0.05);
+ const grounded=state.answer.includes("[DOC-");
+ return `<div class="grid3"><div class="mini"><div class="eyebrow">Retrieval</div><h4>${coverage?"Good coverage":"Weak coverage"}</h4><p>Did retrieved chunks contain evidence related to the question?</p></div>
+ <div class="mini"><div class="eyebrow">Generation</div><h4>${grounded?"Grounded":"Ungrounded"}</h4><p>Does the answer expose a source citation?</p></div>
+ <div class="mini"><div class="eyebrow">System</div><h4>${coverage&&grounded?"Healthy run":"Needs tuning"}</h4><p>RAG quality is a pipeline problem, not only an LLM problem.</p></div></div>
+ <div class="mini" style="margin-top:14px"><h4>Quick check: which statement is true?</h4><div class="quiz">
+ <button class="option" onclick="quiz(this,false)">A. RAG is just fine-tuning with a different name.</button>
+ <button class="option" onclick="quiz(this,true)">B. Retrieval supplies external context that the generator can use to ground an answer.</button>
+ <button class="option" onclick="quiz(this,false)">C. A vector database directly writes the final answer.</button>
+ </div><p id="quizMsg" style="color:var(--muted);font-size:12px"></p></div>
+ <div class="callout" style="margin-top:14px"><b>Next-level production questions:</b> What is recall@k? How do you detect stale documents? How do permissions flow into retrieval? When should you hybrid-search keywords + vectors? How do you evaluate citation faithfulness?</div>
+ <div class="controls"><button class="btn primary" onclick="restart()">↺ Run another experiment</button></div>`;
+}
+function quiz(el,correct){
+ document.querySelectorAll(".option").forEach(x=>x.classList.remove("correct","wrong"));
+ el.classList.add(correct?"correct":"wrong");
+ $("#quizMsg").textContent=correct?"Correct — retrieval and generation are separate stages.":"Not quite. Trace the pipeline: retrieve evidence first, then generate from it.";
+}
+function evaluateAction(){state.stage=9;render()}
+function restart(){state.stage=0;state.chunks=[];state.vectors=[];state.retrieved=[];state.reranked=[];state.answer="";state.evaluated=false;render();toast("New RAG run started")}
+function runAll(){for(let i=0;i<10;i++){if(i===0){};state.stage=i;if(i===0){} if(i===2)state.chunks=makeChunks();if(i===3)state.vectors=state.chunks.map(c=>({id:c.id,v:fakeVector(c.text)}));if(i===5)runRetrieveDirect();if(i===6){state.reranked=state.retrieved.map(x=>({...x,rerank:x.score+(x.text.toLowerCase().includes("chunk")?.12:0)})).sort((a,b)=>b.rerank-a.rerank)} }state.stage=8;render();setTimeout(()=>{state.stage=9;render()},450)}
+function runRetrieveDirect(){state.retrieved=state.chunks.map(c=>({...c,score:similarity(state.query,c.text)})).sort((a,b)=>b.score-a.score).slice(0,5)}
+function toast(t){const x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
+$("#runBtn").onclick=runAll;
+$("#resetBtn").onclick=restart;
+render();
+</script>
+</body>
+</html>
